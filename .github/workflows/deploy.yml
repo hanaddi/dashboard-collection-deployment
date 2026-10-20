@@ -1,0 +1,54 @@
+name: Deploy GitHub Pages from Private Repo
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v4
+
+      - name: Clone private repository
+        env:
+        #   GH_TOKEN: ${{ secrets.PRIVATE_REPO_PAT }}
+          GH_REPO: ${{ secrets.PRIVATE_REPO }}
+        run: |
+          git clone ${GH_REPO} source
+        #   git clone https://${GH_TOKEN}@github.com/OWNER/private-repo.git source
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: source
+
+  deploy:
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
